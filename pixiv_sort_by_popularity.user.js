@@ -62,7 +62,7 @@ setUserPref(
 );
 
 
-//for override fetch, I think it's sure insert to page, otherwise userscript don't have permission modified fetch in page?
+//for override fetch, I think override function sure insert to page, otherwise userscript don't have permission modified fetch in page?
 function addJS_Node (text)
 {
     var scriptNode                      = document.createElement ('script');
@@ -103,12 +103,12 @@ function intercept(responseDetails){
     //here is script end,
     //in console ,log show fetch response body has been changed <--- not very sure
     //and page have react ---> stay blank for ever
-    //my confuse is: even comment "return data" (line:88), page still return blank,
+    //my confuse is: even comment "return data" (line:93), page still return blank,
     //that makes me wonder: maybe this override function miss something.
     //if my terrible code can be understanding somehow,
-    //and knoa san have nothing else todo in some leisure time,
+    //and knoa san have nothing else todo in leisure time,
     //knoa san can you take while, look my newbie problem?
-    //of cource if too painful reading all my code, I totally understand!
+    //of cource if too painful read my code, I totally understand!
     //knoa san can read to here already be my greatest honor, and I'm very happy!
 }
 
