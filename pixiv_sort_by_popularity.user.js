@@ -5,10 +5,10 @@
 // @name:ja        pixiv_sort_by_popularity
 // @namespace   pixiv_sort_by_popularity
 // @supportURL  https://github.com/zhuzemin
-// @description no premium menber use "Sort by popularity"
-// @description:zh-CN no premium menber use "Sort by popularity"
-// @description:zh-TW no premium menber use "Sort by popularity"
-// @description:ja no premium menber use "Sort by popularity"
+// @description non premium menber use "Sort by popularity"
+// @description:zh-CN non premium menber use "Sort by popularity"
+// @description:zh-TW non premium menber use "Sort by popularity"
+// @description:ja non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
 // @version     1.0
@@ -41,7 +41,7 @@ class requestObject{
         this.url = cloudFlareUrl+'https://www.pixiv.net/ajax/search/artworks/'+keyword+'?word='+keyword+'&order=date&mode=all&p=1&s_mode=s_tag&type=all';
         this.data=null,
             this.headers = {
-                'User-agent': 'Mozilla/4.0 (compatible) Greasemonkey',
+                'User-agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:68.0) Gecko/20100101 Firefox/68.0',
                 'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8'
                 //'Accept': 'application/atom+xml,application/xml,text/xml',
                 //'Referer': window.location.href,
@@ -74,6 +74,7 @@ function addJS_Node (text)
 }
 
 
+
 //override fetch
 function intercept(responseDetails){
     //response from my server
@@ -81,20 +82,32 @@ function intercept(responseDetails){
     debug(newData);
     //insert override function to page, include response
     addJS_Node(`
-    var originalFetch = fetch;
-    fetch = function() {
-        return originalFetch.apply(this,arguments).then((response) => {
-    console.log(response.url);
-    if(response.url.includes('https://www.pixiv.net/ajax/search/artworks/')){
-    response.json().then((data) => {
-        console.log(data);
-        data=`+JSON.stringify(newData)+`;
-        console.log(data);
-        return data;
+const constantMock = window.fetch;
+ window.fetch = function() {
+  console.log(arguments);
+
+    return new Promise((resolve, reject) => {
+        constantMock.apply(this, arguments)
+            .then((response) => {
+                if(response.url.includes('/ajax/search/artworks/')&&response){
+                    console.log(response);
+var blob = new Blob([JSON.stringify(`+JSON.stringify(newData)+`,null,2)], {type : 'application/json'});
+
+                    var newResponse=new Response(
+        blob, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      });
+                    console.log(newResponse);
+                }
+                resolve(newResponse);
+            })
+            .catch((error) => {
+                reject(response);
+            })
     });
-    }
-});
-    };
+ }
  `);
     //trigger fetch by click "Newest" or "Oldest"
     var div=document.querySelectorAll('div.sc-LzMhL.krKUte')[1];
