@@ -11,7 +11,7 @@
 // @description:ja non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.0
+// @version     1.01
 // @run-at      document-start
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -176,10 +176,6 @@ function sortByPopularity(e) {
 
             }
     }
-        else if(/p=(\d*)/.test(window.location.href)){
-            page=window.location.href.match(/p=(\d*)/)[1];
-
-        }
         else{
             page=1;
     }
