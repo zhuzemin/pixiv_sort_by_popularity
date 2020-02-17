@@ -11,7 +11,7 @@
 // @description:ja non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.01
+// @version     1.02
 // @run-at      document-start
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -159,15 +159,17 @@ window.addEventListener('load', init);
 //get current search word, then use xmlHttpRequest get response(from my server)
 function sortByPopularity(e) {
     btn.innerHTML='Searching...'
-    var keyword;
+    try{
+        var keyword;
         var matching=window.location.href.match(/https:\/\/www\.pixiv\.net\/(\w*\/)?tags\/(.*)\/artworks\?(order=[^\?&]*)?&?(mode=(\w\d*))?&?(p=(\d*))?/);
         keyword=matching[2]
-    debug(e.target.tagName)
-    if(/(\d*)/.test(e.target.textContent)&&(e.target.tagName=='SPAN'||e.target.tagName=="A")){
-        page=e.target.textContent.match(/(\d*)/)[1];
-    }
-    else if(e.target.tagName=='svg'||e.target.tagName=='polyline'){
-            if(e.target.parentElement.tagName=='a'){
+        debug(e.target.tagName)
+        if(/(\d*)/.test(e.target.textContent)&&(e.target.tagName=='SPAN'||e.target.tagName=="A")){
+            page=e.target.textContent.match(/(\d*)/)[1];
+        }
+        else if(e.target.tagName=='svg'||e.target.tagName=='polyline'){
+            //debug('e.target.parentElement.tagName: '+e.target.parentElement.tagName);
+            if(e.target.parentElement.tagName.toLowerCase()=='a'){
                 page=e.target.parentElement.href.match(/p=(\d*)/)[1];
 
             }
@@ -175,11 +177,11 @@ function sortByPopularity(e) {
                 page=e.target.parentElement.parentElement.href.match(/p=(\d*)/)[1];
 
             }
-    }
+        }
         else{
             page=1;
-    }
-    page=parseInt(page);
+        }
+        page=parseInt(page);
         debug(keyword);
         debug('page: '+page);
         var order=document.querySelector('#sortByPopularity').value;
@@ -191,6 +193,7 @@ function sortByPopularity(e) {
             mode='all';
         }
         var obj=new requestObject(keyword,page,order,mode);
+        debug('JSON.stringify(obj): '+JSON.stringify(obj));
         request(obj,function (responseDetails) {
 
             unsafeWindow.newData=JSON.stringify(responseDetails.response,null,2);
@@ -230,6 +233,11 @@ function sortByPopularity(e) {
                 }
             },2000);
         });
+
+    }
+    catch (e) {
+        debug('[Error]: '+e)
+    }
 
 }
 function request(object,func) {
