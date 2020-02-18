@@ -11,7 +11,7 @@
 // @description:ja non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.02
+// @version     1.03
 // @run-at      document-start
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -52,8 +52,6 @@ class requestObject{
 }
 
 var btn;
-var page;
-var select;
 
 // prepare UserPrefs
 setUserPref(
@@ -86,14 +84,14 @@ function intercept(){
     var interceptEnable;
     var constantMock = window.fetch;
     window.fetch = function() {
-        console.log(arguments);
+        //console.log(arguments);
 
     return new Promise((resolve, reject) => {
         constantMock.apply(this, arguments)
             .then((response) => {
     if(interceptEnable&&/https:\\/\\/www\\.pixiv\\.net\\/ajax\\/search\\/artworks\\/[^\\?&]*\\?word=[^\\?&]*&order=date(_d)?/.test(response.url)){
        var blob = new Blob([newData], {type : 'application/json'});
-         console.log(newData);
+         //console.log(newData);
 
         var newResponse=new Response(
         blob, {
@@ -101,7 +99,7 @@ function intercept(){
         statusText: response.statusText,
         headers: response.headers
       });
-        console.log(newResponse);
+        //console.log(newResponse);
                     response=newResponse;
                     interceptEnable=false;
     }
@@ -161,9 +159,10 @@ function sortByPopularity(e) {
     btn.innerHTML='Searching...'
     try{
         var keyword;
+        var page;
         var matching=window.location.href.match(/https:\/\/www\.pixiv\.net\/(\w*\/)?tags\/(.*)\/artworks\?(order=[^\?&]*)?&?(mode=(\w\d*))?&?(p=(\d*))?/);
-        keyword=matching[2]
-        debug(e.target.tagName)
+        keyword=matching[2];
+        debug(e.target.tagName);
         if(/(\d*)/.test(e.target.textContent)&&(e.target.tagName=='SPAN'||e.target.tagName=="A")){
             page=e.target.textContent.match(/(\d*)/)[1];
         }
@@ -178,6 +177,10 @@ function sortByPopularity(e) {
 
             }
         }
+        //for test
+        /*else if(matching[7]!=null){
+            page=matching[7];
+        }*/
         else{
             page=1;
         }
@@ -205,25 +208,43 @@ function sortByPopularity(e) {
                 var nav=document.querySelector('nav.sc-LzNRw.qhAyw');
                 if(nav!=null){
                     nav.addEventListener('click',sortByPopularity);
-                    nav.childNodes[1].childNodes[0].innerText=page;
                     if(page<=7&&page>1){
+                        //nav button "1" text -> current page number
+                        nav.childNodes[1].childNodes[0].innerText=page;
+                        //nav button "1" href -> current page href
                         nav.childNodes[1].href=nav.childNodes[page].href;
+                        //current page button text -> "1"
                         nav.childNodes[page].innerText=1;
+                        //current page button href -> origin nav button "1" href
                         nav.childNodes[page].href=nav.childNodes[0].href;
+                        //switch two button positon
                         nav.insertBefore(nav.childNodes[1],nav.childNodes[page]);
                         nav.insertBefore(nav.childNodes[page],nav.childNodes[1]);
 
                     }
                     else if(page>7){
-                        //nav.insertBefore(nav.childNodes[1],nav.childNodes[8]);
-                        for(var i=2;i<8;i++){
-                            nav.childNodes[i].childNodes[0].innerText=page+i-1;
-                            nav.childNodes[i].href=nav.childNodes[i].href.replace(/p=\d*/,'p='+(page+i-1));
+                        var currentPositionInNav=page%7;
+                        debug("currentPositionInNav: "+currentPositionInNav);
+                        var buttonStartNumber=page-currentPositionInNav;
+                        debug("buttonStartNumber: "+buttonStartNumber);
+                        var navButtonCount=1;
+                        //switch two button positon
+                        nav.insertBefore(nav.childNodes[1],nav.childNodes[currentPositionInNav+1]);
+                        nav.insertBefore(nav.childNodes[currentPositionInNav+1],nav.childNodes[1]);
+                        for(var i=buttonStartNumber;i<=(buttonStartNumber+6);i++){
+                            debug("navButtonCount: "+navButtonCount);
+                            debug("i: "+i);
+                            nav.childNodes[navButtonCount].childNodes[0].innerText=i;
+                            nav.childNodes[navButtonCount].href=nav.childNodes[8].href.replace(/p=\d*/,'p='+(i));
+                            navButtonCount++;
                         }
                     }
                     if(page!=1){
+                        //display previous button
                         nav.childNodes[0].style='opacity:1!important;';
+                        //previous button href
                         nav.childNodes[0].href=nav.childNodes[8].href.replace(/p=\d*/,'p='+(page-1));
+                        //next button href
                         nav.childNodes[8].href=nav.childNodes[8].href.replace(/p=\d*/,'p='+(page+1));
 
                     }
