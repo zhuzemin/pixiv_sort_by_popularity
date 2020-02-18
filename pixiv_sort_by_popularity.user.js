@@ -11,7 +11,7 @@
 // @description:ja non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.03
+// @version     1.04
 // @run-at      document-start
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -36,9 +36,12 @@ var cloudFlareUrl='https://proud-surf-e590.zhuzemin.workers.dev/ajax/';
 
 //Obejct use for xmlHttpRequest
 class requestObject{
-    constructor(keyword,page,order,mode) {
+    constructor(originUrl,page,order) {
         this.method = 'GET';
-        this.url = cloudFlareUrl+'https://www.pixiv.net/ajax/search/artworks/'+keyword+'?word='+keyword+'&order='+order+'&mode='+mode+'&p='+page+'&s_mode=s_tag&type=all';
+        this.url = cloudFlareUrl+originUrl
+            .replace(/(https:\/\/www\.pixiv\.net\/)(\w*)?\/tags\/([^\/]*)\/(\w*)\?([^\/\?]*)/,
+                function(match, $1, $2,$3,$4,$5, offset, original){ return $1+'ajax/search/'+$4+'/'+$3+'?'+$5;})
+            .replace(/p=\d*/,'').replace(/order=[_\w]*/,'order='+order)+'&p='+page;
         this.data=null,
             this.headers = {
                 'User-agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:68.0) Gecko/20100101 Firefox/68.0',
@@ -158,10 +161,8 @@ window.addEventListener('load', init);
 function sortByPopularity(e) {
     btn.innerHTML='Searching...'
     try{
-        var keyword;
         var page;
-        var matching=window.location.href.match(/https:\/\/www\.pixiv\.net\/(\w*\/)?tags\/(.*)\/artworks\?(order=[^\?&]*)?&?(mode=(\w\d*))?&?(p=(\d*))?/);
-        keyword=matching[2];
+        //var matching=window.location.href.match(/https:\/\/www\.pixiv\.net\/(\w*\/)?tags\/(.*)\/\w*\?(order=[^\?&]*)?&?(mode=(\w\d*))?&?(p=(\d*))?/);
         debug(e.target.tagName);
         if(/(\d*)/.test(e.target.textContent)&&(e.target.tagName=='SPAN'||e.target.tagName=="A")){
             page=e.target.textContent.match(/(\d*)/)[1];
@@ -185,17 +186,9 @@ function sortByPopularity(e) {
             page=1;
         }
         page=parseInt(page);
-        debug(keyword);
         debug('page: '+page);
         var order=document.querySelector('#sortByPopularity').value;
-        var mode;
-        if(/(&|\?)mode=([\d\w]*)/.test(window.location.href)){
-            mode=window.location.href.match(/(&|\?)mode=([\d\w]*)/)[2];
-        }
-        else {
-            mode='all';
-        }
-        var obj=new requestObject(keyword,page,order,mode);
+        var obj=new requestObject(window.location.href,page,order);
         debug('JSON.stringify(obj): '+JSON.stringify(obj));
         request(obj,function (responseDetails) {
 
