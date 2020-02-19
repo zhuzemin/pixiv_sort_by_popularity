@@ -11,7 +11,7 @@
 // @description:ja non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.04
+// @version     1.05
 // @run-at      document-start
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -92,7 +92,7 @@ function intercept(){
     return new Promise((resolve, reject) => {
         constantMock.apply(this, arguments)
             .then((response) => {
-    if(interceptEnable&&/https:\\/\\/www\\.pixiv\\.net\\/ajax\\/search\\/artworks\\/[^\\?&]*\\?word=[^\\?&]*&order=date(_d)?/.test(response.url)){
+    if(interceptEnable&&/https:\\/\\/www\\.pixiv\\.net\\/ajax\\/search\\//.test(response.url)){
        var blob = new Blob([newData], {type : 'application/json'});
          //console.log(newData);
 
