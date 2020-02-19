@@ -11,7 +11,7 @@
 // @description:ja non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.06
+// @version     1.07
 // @run-at      document-start
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -164,10 +164,10 @@ function sortByPopularity(e) {
         var page;
         //var matching=window.location.href.match(/https:\/\/www\.pixiv\.net\/(\w*\/)?tags\/(.*)\/\w*\?(order=[^\?&]*)?&?(mode=(\w\d*))?&?(p=(\d*))?/);
         debug(e.target.tagName);
-        if(/(\d*)/.test(e.target.textContent)&&(e.target.tagName=='SPAN'||e.target.tagName=="A")){
+        if(/(\d*)/.test(e.target.textContent)&&(e.target.tagName.toLowerCase()=='span'||e.target.tagName.toLowerCase()=="a")){
             page=e.target.textContent.match(/(\d*)/)[1];
         }
-        else if(e.target.tagName=='svg'||e.target.tagName=='polyline'){
+        else if(e.target.tagName.toLowerCase()=='svg'||e.target.tagName.toLowerCase()=='polyline'){
             //debug('e.target.parentElement.tagName: '+e.target.parentElement.tagName);
             if(e.target.parentElement.tagName.toLowerCase()=='a'){
                 page=e.target.parentElement.href.match(/p=(\d*)/)[1];
