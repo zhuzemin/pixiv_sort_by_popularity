@@ -11,7 +11,7 @@
 // @description:ja non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.05
+// @version     1.06
 // @run-at      document-start
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -133,7 +133,7 @@ var init=function(){
         debug("init");
         cloudFlareUrl=GM_getValue('cloudFlareUrl')||cloudFlareUrl;
         intercept();
-        var div=document.querySelectorAll('div.sc-LzMhL.krKUte')[1];
+        var div=document.querySelectorAll('div.sc-LzNRw.qhAyw')[0];
         btn =document.createElement('button');
         btn.innerHTML='Sort by popularity';
         btn.addEventListener('click',sortByPopularity);
@@ -195,10 +195,10 @@ function sortByPopularity(e) {
             unsafeWindow.newData=JSON.stringify(responseDetails.response,null,2);
             unsafeWindow.interceptEnable=true;
             //trigger fetch by click "Newest" or "Oldest"
-            var div=document.querySelectorAll('div.sc-LzMhL.krKUte')[1];
+            var div=document.querySelectorAll('div.sc-LzMhM.krTqXn')[1];
             div.querySelector('a').click();
             var interval=setInterval(function () {
-                var nav=document.querySelector('nav.sc-LzNRw.qhAyw');
+                var nav=document.querySelector('nav.sc-LzNRx.qpXcF');
                 if(nav!=null){
                     nav.addEventListener('click',sortByPopularity);
                     if(page<=7&&page>1){
