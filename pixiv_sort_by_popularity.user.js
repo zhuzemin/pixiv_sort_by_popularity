@@ -11,7 +11,7 @@
 // @description:ja non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.07
+// @version     1.08
 // @run-at      document-start
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -41,7 +41,7 @@ class requestObject{
         this.url = cloudFlareUrl+originUrl
             .replace(/(https:\/\/www\.pixiv\.net\/)(\w*)?\/tags\/([^\/]*)\/(\w*)\?([^\/\?]*)/,
                 function(match, $1, $2,$3,$4,$5, offset, original){ return $1+'ajax/search/'+$4+'/'+$3+'?'+$5;})
-            .replace(/p=\d*/,'').replace(/order=[_\w]*/,'order='+order)+'&p='+page;
+            .replace(/p=\d*/,'').replace(/order=[_\w]*/,'')+'&p='+page+'&order='+order;
         this.data=null,
             this.headers = {
                 'User-agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:68.0) Gecko/20100101 Firefox/68.0',
@@ -133,7 +133,7 @@ var init=function(){
         debug("init");
         cloudFlareUrl=GM_getValue('cloudFlareUrl')||cloudFlareUrl;
         intercept();
-        var div=document.querySelectorAll('div.sc-LzNRw.qhAyw')[0];
+        var div=document.querySelector('div.sc-LzNRw.qhAyw');
         btn =document.createElement('button');
         btn.innerHTML='Sort by popularity';
         btn.addEventListener('click',sortByPopularity);
@@ -191,11 +191,12 @@ function sortByPopularity(e) {
         var obj=new requestObject(window.location.href,page,order);
         debug('JSON.stringify(obj): '+JSON.stringify(obj));
         request(obj,function (responseDetails) {
-
+debug("responseDetails.response: "+JSON.stringify(responseDetails.response));
             unsafeWindow.newData=JSON.stringify(responseDetails.response,null,2);
             unsafeWindow.interceptEnable=true;
             //trigger fetch by click "Newest" or "Oldest"
-            var div=document.querySelectorAll('div.sc-LzMhM.krTqXn')[1];
+            var divList=document.querySelectorAll('div.sc-LzMhM.krTqXn');
+            var div=divList[divList.length-1];
             div.querySelector('a').click();
             var interval=setInterval(function () {
                 var nav=document.querySelector('nav.sc-LzNRx.qpXcF');
