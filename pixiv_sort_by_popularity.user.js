@@ -1,5 +1,5 @@
 ﻿// ==UserScript==
-// @name        pixiv_sort_by_popularity(working again)
+// @name        pixiv_sort_by_popularity
 // @name:zh-CN        pixiv_sort_by_popularity
 // @name:zh-TW        pixiv_sort_by_popularity
 // @name:ja        pixiv_sort_by_popularity
@@ -11,7 +11,7 @@
 // @description:ja non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.09
+// @version     1.10
 // @run-at      document-start
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -88,9 +88,10 @@ function intercept(){
     var newUrl;
     var constantMock = window.fetch;
     window.fetch = function() {
-    arguments[0]=newUrl;
+    if(interceptEnable&&/https:\\/\\/www\\.pixiv\\.net\\/ajax\\/search\\//.test(arguments[0])){
+        arguments[0]=newUrl;
         //console.log(arguments);
-
+    }
     return new Promise((resolve, reject) => {
         constantMock.apply(this, arguments)
             .then((response) => {
@@ -135,6 +136,12 @@ var init=function(){
         debug("init");
         cloudFlareUrl=GM_getValue('cloudFlareUrl')||cloudFlareUrl;
         intercept();
+        var interval=setInterval(function () {
+            var navList=document.querySelectorAll('nav');
+            debug('navList.length: '+navList.length)
+            if(navList.length==2){
+                nav=navList[1];
+                debug('nav: '+nav.innerHTML)
         var nav=document.querySelector('nav');
         btn =document.createElement('button');
         btn.innerHTML='Sort by popularity';
@@ -154,7 +161,12 @@ var init=function(){
             select.insertBefore(option,null);
         }
         nav.insertBefore(select,null);
+        clearInterval(interval);
+
+            }
+        },4000);
     }
+
 }
 
 window.addEventListener('load', init);
@@ -208,8 +220,11 @@ debug("responseDetails.response: "+JSON.stringify(responseDetails.response));
                 }
             }
             var interval=setInterval(function () {
-                var nav=document.querySelectorAll('nav')[1];
-                if(nav!=null){
+                var navList=document.querySelectorAll('nav');
+                debug('navList.length: '+navList.length)
+                if(navList.length==2){
+                    nav=navList[1];
+                    debug('nav: '+nav.innerHTML)
                     nav.addEventListener('click',sortByPopularity);
                     if(page<=7&&page>1){
                         //nav button "1" text -> current page number
@@ -255,7 +270,7 @@ debug("responseDetails.response: "+JSON.stringify(responseDetails.response));
                     clearInterval(interval);
 
                 }
-            },2000);
+            },4000);
         });
 
     }
