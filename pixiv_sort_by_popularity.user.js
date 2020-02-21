@@ -1,5 +1,5 @@
 ﻿// ==UserScript==
-// @name        pixiv_sort_by_popularity
+// @name        pixiv_sort_by_popularity(working again)
 // @name:zh-CN        pixiv_sort_by_popularity
 // @name:zh-TW        pixiv_sort_by_popularity
 // @name:ja        pixiv_sort_by_popularity
@@ -11,7 +11,7 @@
 // @description:ja non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.08
+// @version     1.09
 // @run-at      document-start
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -39,7 +39,7 @@ class requestObject{
     constructor(originUrl,page,order) {
         this.method = 'GET';
         this.url = cloudFlareUrl+originUrl
-            .replace(/(https:\/\/www\.pixiv\.net\/)(\w*)?\/tags\/([^\/]*)\/(\w*)\?([^\/\?]*)/,
+            .replace(/(https:\/\/www\.pixiv\.net\/)(\w*\/)?tags\/([^\/]*)\/(\w*)\?([^\/\?]*)/,
                 function(match, $1, $2,$3,$4,$5, offset, original){ return $1+'ajax/search/'+$4+'/'+$3+'?'+$5;})
             .replace(/p=\d*/,'').replace(/order=[_\w]*/,'')+'&p='+page+'&order='+order;
         this.data=null,
@@ -85,8 +85,10 @@ function intercept(){
     addJS_Node(`
     var newData;
     var interceptEnable;
+    var newUrl;
     var constantMock = window.fetch;
     window.fetch = function() {
+    arguments[0]=newUrl;
         //console.log(arguments);
 
     return new Promise((resolve, reject) => {
@@ -133,11 +135,11 @@ var init=function(){
         debug("init");
         cloudFlareUrl=GM_getValue('cloudFlareUrl')||cloudFlareUrl;
         intercept();
-        var div=document.querySelector('div.sc-LzNRw.qhAyw');
+        var nav=document.querySelector('nav');
         btn =document.createElement('button');
         btn.innerHTML='Sort by popularity';
         btn.addEventListener('click',sortByPopularity);
-        div.insertBefore(btn,null);
+        nav.insertBefore(btn,null);
         select=document.createElement('select');
         select.id='sortByPopularity';
         var optionObj={
@@ -151,7 +153,7 @@ var init=function(){
             option.value=optionObj[key];
             select.insertBefore(option,null);
         }
-        div.insertBefore(select,null);
+        nav.insertBefore(select,null);
     }
 }
 
@@ -194,12 +196,19 @@ function sortByPopularity(e) {
 debug("responseDetails.response: "+JSON.stringify(responseDetails.response));
             unsafeWindow.newData=JSON.stringify(responseDetails.response,null,2);
             unsafeWindow.interceptEnable=true;
+            unsafeWindow.newUrl=obj.url.replace(cloudFlareUrl+'https://www.pixiv.net','');
             //trigger fetch by click "Newest" or "Oldest"
-            var divList=document.querySelectorAll('div.sc-LzMhM.krTqXn');
-            var div=divList[divList.length-1];
-            div.querySelector('a').click();
+            var spanList=document.querySelectorAll('span');
+            for(var span of spanList){
+                if(/(Newest)|(Oldest)|(按最新排序)|(按旧|舊排序)|(新しい順)|(古い順)|(최신순)|(과거순)/.test(span.textContent)){
+                    if(span.parentElement.tagName.toLowerCase()=='a'){
+                        span.parentElement.click();
+                        break;
+                    }
+                }
+            }
             var interval=setInterval(function () {
-                var nav=document.querySelector('nav.sc-LzNRx.qpXcF');
+                var nav=document.querySelectorAll('nav')[1];
                 if(nav!=null){
                     nav.addEventListener('click',sortByPopularity);
                     if(page<=7&&page>1){
