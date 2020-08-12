@@ -3,12 +3,16 @@
 // @name:zh-CN        pixiv_sort_by_popularity
 // @name:zh-TW        pixiv_sort_by_popularity
 // @name:ja        pixiv_sort_by_popularity
+// @name:ru        pixiv_sort_by_popularity
+// @name:kr        pixiv_sort_by_popularity
 // @namespace   pixiv_sort_by_popularity
 // @supportURL  https://github.com/zhuzemin
 // @description non premium menber use "Sort by popularity"
 // @description:zh-CN non premium menber use "Sort by popularity"
 // @description:zh-TW non premium menber use "Sort by popularity"
 // @description:ja non premium menber use "Sort by popularity"
+// @description:ru non premium menber use "Sort by popularity"
+// @description:kr non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
 // @version     1.20
@@ -21,6 +25,8 @@
 // @grant         GM_setValue
 // @grant         GM_getValue
 // @connect-src workers.dev
+// @contributionAmount 0.5
+// @contributionURL https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=rzzm@hotmail.com&item_name=Greasy+Fork+donation
 // ==/UserScript==
 var config = {
   'debug': false,
