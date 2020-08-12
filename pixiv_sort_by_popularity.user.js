@@ -11,8 +11,8 @@
 // @description:ja non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.10
-// @run-at      document-start
+// @version     1.20
+// @run-at      document-end
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
 // @license     CC Attribution-ShareAlike 4.0 International; http://creativecommons.org/licenses/by-sa/4.0/
@@ -23,7 +23,8 @@
 // @connect-src workers.dev
 // ==/UserScript==
 var config = {
-  'debug': false
+  'debug': false,
+    'bookmarkSupport': true //set this option to true, will enable bookmark cue(*red heart) in search result page, but page loading may slower.
 }
 var debug = config.debug ? console.log.bind(console)  : function () {
 };
@@ -43,6 +44,7 @@ class requestObject{
                 function(match, $1, $2,$3,$4,$5, offset, original){ return $1+'ajax/search/'+$4+'/'+$3+'?'+$5;})
             .replace(/p=\d*/,'').replace(/order=[_\w]*/,'')+'&p='+page+'&order='+order;
         this.data=null,
+            this.responseType='json',
             this.headers = {
                 'User-agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:68.0) Gecko/20100101 Firefox/68.0',
                 'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8'
@@ -55,6 +57,7 @@ class requestObject{
 }
 
 var btn;
+let illustId_list=[];
 
 // prepare UserPrefs
 setUserPref(
@@ -203,75 +206,9 @@ function sortByPopularity(e) {
         debug('page: '+page);
         var order=document.querySelector('#sortByPopularity').value;
         var obj=new requestObject(window.location.href,page,order);
+        obj.package=page;
         debug('JSON.stringify(obj): '+JSON.stringify(obj));
-        request(obj,function (responseDetails) {
-debug("responseDetails.response: "+JSON.stringify(responseDetails.response));
-            unsafeWindow.newData=JSON.stringify(responseDetails.response,null,2);
-            unsafeWindow.interceptEnable=true;
-            unsafeWindow.newUrl=obj.url.replace(cloudFlareUrl+'https://www.pixiv.net','');
-            //trigger fetch by click "Newest" or "Oldest"
-            var spanList=document.querySelectorAll('span');
-            for(var span of spanList){
-                if(/(Newest)|(Oldest)|(按最新排序)|(按旧|舊排序)|(新しい順)|(古い順)|(최신순)|(과거순)/.test(span.textContent)){
-                    if(span.parentElement.tagName.toLowerCase()=='a'){
-                        span.parentElement.click();
-                        break;
-                    }
-                }
-            }
-            var interval=setInterval(function () {
-                var navList=document.querySelectorAll('nav');
-                debug('navList.length: '+navList.length)
-                if(navList.length==2){
-                    nav=navList[1];
-                    debug('nav: '+nav.innerHTML)
-                    nav.addEventListener('click',sortByPopularity);
-                    if(page<=7&&page>1){
-                        //nav button "1" text -> current page number
-                        nav.childNodes[1].childNodes[0].innerText=page;
-                        //nav button "1" href -> current page href
-                        nav.childNodes[1].href=nav.childNodes[page].href;
-                        //current page button text -> "1"
-                        nav.childNodes[page].innerText=1;
-                        //current page button href -> origin nav button "1" href
-                        nav.childNodes[page].href=nav.childNodes[0].href;
-                        //switch two button positon
-                        nav.insertBefore(nav.childNodes[1],nav.childNodes[page]);
-                        nav.insertBefore(nav.childNodes[page],nav.childNodes[1]);
-
-                    }
-                    else if(page>7){
-                        var currentPositionInNav=page%7;
-                        debug("currentPositionInNav: "+currentPositionInNav);
-                        var buttonStartNumber=page-currentPositionInNav;
-                        debug("buttonStartNumber: "+buttonStartNumber);
-                        var navButtonCount=1;
-                        //switch two button positon
-                        nav.insertBefore(nav.childNodes[1],nav.childNodes[currentPositionInNav+1]);
-                        nav.insertBefore(nav.childNodes[currentPositionInNav+1],nav.childNodes[1]);
-                        for(var i=buttonStartNumber;i<=(buttonStartNumber+6);i++){
-                            debug("navButtonCount: "+navButtonCount);
-                            debug("i: "+i);
-                            nav.childNodes[navButtonCount].childNodes[0].innerText=i;
-                            nav.childNodes[navButtonCount].href=nav.childNodes[8].href.replace(/p=\d*/,'p='+(i));
-                            navButtonCount++;
-                        }
-                    }
-                    if(page!=1){
-                        //display previous button
-                        nav.childNodes[0].style='opacity:1!important;';
-                        //previous button href
-                        nav.childNodes[0].href=nav.childNodes[8].href.replace(/p=\d*/,'p='+(page-1));
-                        //next button href
-                        nav.childNodes[8].href=nav.childNodes[8].href.replace(/p=\d*/,'p='+(page+1));
-
-                    }
-                    btn.innerHTML='Sort by popularity';
-                    clearInterval(interval);
-
-                }
-            },4000);
-        });
+        getBookmark(obj);
 
     }
     catch (e) {
@@ -279,19 +216,136 @@ debug("responseDetails.response: "+JSON.stringify(responseDetails.response));
     }
 
 }
+
+
+function getBookmark(obj, bookmarkNum=1, pageNum=1 ) {
+    if(config.bookmarkSupport){
+        let reqObj=new requestObject('','','');
+        reqObj.url='https://www.pixiv.net/bookmark.php?rest=show&p='+pageNum;
+        reqObj.responseType='text';
+        request(reqObj,function (responseDetails,package) {
+            let dom = new DOMParser().parseFromString(responseDetails.responseText, "text/html");
+            totalPageNum=dom.querySelector('ul.page-list').childElementCount;
+            debug('totalPageNum: '+totalPageNum);
+            for(let elem of dom.querySelectorAll('li.image-item')){
+                let illustId = elem.querySelector('a').href.match(/(\d{1,20})/)[1];
+                debug('illustId: '+illustId);
+                illustId_list.push(illustId);
+            }
+            if(pageNum!=totalPageNum){
+                pageNum++;
+                getBookmark(obj, totalPageNum,pageNum);
+                debug('pageNum: '+pageNum);
+            }
+            else{
+                debug('illustId_list: '+illustId_list);
+                request(obj,replaceContent);
+
+            }
+
+        });
+
+    }
+    else {
+        debug('illustId_list: '+illustId_list);
+        request(obj,replaceContent);
+
+    }
+}
+
+function replaceContent(responseDetails, obj) {
+    let page =obj.package;
+    debug("responseDetails.response: "+JSON.stringify(responseDetails.response));
+    let remoteResponse=responseDetails.response;
+    for(let data of remoteResponse.body.illustManga.data){
+        if(illustId_list.includes(data.illustId)){
+            debug('data.illustId: '+data.illustId);
+            data.bookmarkData={"id":"123","private":false};
+        }
+    }
+    debug("remoteResponse: "+JSON.stringify(remoteResponse));
+    debug("remoteResponse.body.illustManga.data[0]: "+JSON.stringify(remoteResponse.body.illustManga.data[0]));
+    unsafeWindow.newData=JSON.stringify(remoteResponse,null,2);
+    unsafeWindow.interceptEnable=true;
+    unsafeWindow.newUrl=obj.url.replace(cloudFlareUrl+'https://www.pixiv.net','');
+    //trigger fetch by click "Newest" or "Oldest"
+    var spanList=document.querySelectorAll('span');
+    for(var span of spanList){
+        if(/(Newest)|(Oldest)|(按最新排序)|(按旧|舊排序)|(新しい順)|(古い順)|(최신순)|(과거순)/.test(span.textContent)){
+            if(span.parentElement.tagName.toLowerCase()=='a'){
+                span.parentElement.click();
+                break;
+            }
+        }
+    }
+    var interval=setInterval(function () {
+        var navList=document.querySelectorAll('nav');
+        debug('navList.length: '+navList.length)
+        if(navList.length==2){
+            nav=navList[1];
+            debug('nav: '+nav.innerHTML)
+            nav.addEventListener('click',sortByPopularity);
+            if(page<=7&&page>1){
+                //nav button "1" text -> current page number
+                nav.childNodes[1].childNodes[0].innerText=page;
+                //nav button "1" href -> current page href
+                nav.childNodes[1].href=nav.childNodes[page].href;
+                //current page button text -> "1"
+                nav.childNodes[page].innerText=1;
+                //current page button href -> origin nav button "1" href
+                nav.childNodes[page].href=nav.childNodes[0].href;
+                //switch two button positon
+                nav.insertBefore(nav.childNodes[1],nav.childNodes[page]);
+                nav.insertBefore(nav.childNodes[page],nav.childNodes[1]);
+
+            }
+            else if(page>7){
+                var currentPositionInNav=page%7;
+                debug("currentPositionInNav: "+currentPositionInNav);
+                var buttonStartNumber=page-currentPositionInNav;
+                debug("buttonStartNumber: "+buttonStartNumber);
+                var navButtonCount=1;
+                //switch two button positon
+                nav.insertBefore(nav.childNodes[1],nav.childNodes[currentPositionInNav+1]);
+                nav.insertBefore(nav.childNodes[currentPositionInNav+1],nav.childNodes[1]);
+                for(var i=buttonStartNumber;i<=(buttonStartNumber+6);i++){
+                    debug("navButtonCount: "+navButtonCount);
+                    debug("i: "+i);
+                    nav.childNodes[navButtonCount].childNodes[0].innerText=i;
+                    nav.childNodes[navButtonCount].href=nav.childNodes[8].href.replace(/p=\d*/,'p='+(i));
+                    navButtonCount++;
+                }
+            }
+            if(page!=1){
+                //display previous button
+                nav.childNodes[0].style='opacity:1!important;';
+                //previous button href
+                nav.childNodes[0].href=nav.childNodes[8].href.replace(/p=\d*/,'p='+(page-1));
+                //next button href
+                nav.childNodes[8].href=nav.childNodes[8].href.replace(/p=\d*/,'p='+(page+1));
+
+            }
+            btn.innerHTML='Sort by popularity';
+            clearInterval(interval);
+
+        }
+    },4000);
+}
+
+
 function request(object,func) {
     GM_xmlhttpRequest({
         method: object.method,
         url: object.url,
         headers: object.headers,
-        responseType: 'json',
+        responseType: object.responseType,
         overrideMimeType: object.charset,
         timeout: 60000,
         //synchronous: true
         onload: function (responseDetails) {
             debug(responseDetails);
             //Dowork
-            func(responseDetails);
+            func(responseDetails,object);
         },
         ontimeout: function (responseDetails) {
             //Dowork
