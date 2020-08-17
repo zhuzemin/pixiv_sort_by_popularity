@@ -46,9 +46,17 @@ class requestObject{
     constructor(originUrl,page,order) {
         this.method = 'GET';
         this.url = cloudFlareUrl+originUrl
-            .replace(/(https:\/\/www\.pixiv\.net\/)(\w*\/)?tags\/([^\/]*)\/(\w*)\?([^\/\?]*)/,
-                function($1,$2,$3,$4,$5,$6){ return $2+'ajax/search/'+$5+'/'+$4+'?'+$6;})
-            .replace(/p=\d*/,'').replace(/order=[_\w]*/,'')+'&p='+page+'&order='+order;
+            .replace(
+                /(https:\/\/www\.pixiv\.net\/)(\w*\/)?tags\/([^\/]*)\/(\w*)(\?[^\/\?]*)?/,
+                function($1,$2,$3,$4,$5,$6){
+                    let apiUrl= $2+'ajax/search/'+$5+'/'+$4;
+                    if($6!=undefined){
+                        apiUrl+=$6;
+                    }
+                    return apiUrl;
+                }
+            )
+            .replace(/\?|$/,'?').replace(/p=\d*/,'').replace(/order=[_\w]*/,'')+'&p='+page+'&order='+order;
         this.data=null,
             this.responseType='json',
             this.headers = {
@@ -170,8 +178,7 @@ var init=function(){
                     select.insertBefore(option,null);
                 }
                 nav.insertBefore(select,null);
-                let elm_Message=document.querySelector('button[title="Message"]');
-                if(elm_Message==null){
+                if(!document.cookie.includes('login_ever')){
                     btn.disabled=true;
                     let lebal=document.createElement('lebal');
                     lebal.innerHTML='Login required';
@@ -277,7 +284,7 @@ function replaceContent(responseDetails, obj) {
     let page =obj.package;
     debug("responseDetails.response: "+JSON.stringify(responseDetails.response));
     let remoteResponse=responseDetails.response;
-    if(illustId_list!=[]){
+    if(illustId_list.length>0){
         for(let data of remoteResponse.body.illustManga.data){
             if(illustId_list.includes(data.illustId)){
                 debug('data.illustId: '+data.illustId);
@@ -286,7 +293,7 @@ function replaceContent(responseDetails, obj) {
         }
     }
     debug("remoteResponse: "+JSON.stringify(remoteResponse));
-    debug("remoteResponse.body.illustManga.data[0]: "+JSON.stringify(remoteResponse.body.illustManga.data[0]));
+    //debug("remoteResponse.body.illustManga.data[0]: "+JSON.stringify(remoteResponse.body.illustManga.data[0]));
     unsafeWindow.newData=JSON.stringify(remoteResponse,null,2);
     unsafeWindow.interceptEnable=true;
     unsafeWindow.newUrl=obj.url.replace(cloudFlareUrl+'https://www.pixiv.net','');
