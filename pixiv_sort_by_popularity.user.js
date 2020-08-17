@@ -15,7 +15,7 @@
 // @description:kr non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.20
+// @version     1.21
 // @run-at      document-end
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -29,7 +29,7 @@
 // @contributionURL https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=rzzm@hotmail.com&item_name=Greasy+Fork+donation
 // ==/UserScript==
 var config = {
-  'debug': false,
+    'debug': false,
     'bookmarkSupport': true //set this option to true, will enable bookmark cue(*red heart) in search result page, but page loading may slower.
 }
 var debug = config.debug ? console.log.bind(console)  : function () {
@@ -47,7 +47,7 @@ class requestObject{
         this.method = 'GET';
         this.url = cloudFlareUrl+originUrl
             .replace(/(https:\/\/www\.pixiv\.net\/)(\w*\/)?tags\/([^\/]*)\/(\w*)\?([^\/\?]*)/,
-                function(match, $1, $2,$3,$4,$5, offset, original){ return $1+'ajax/search/'+$4+'/'+$3+'?'+$5;})
+                function($1,$2,$3,$4,$5){ return $1+'ajax/search/'+$4+'/'+$3+'?'+$5;})
             .replace(/p=\d*/,'').replace(/order=[_\w]*/,'')+'&p='+page+'&order='+order;
         this.data=null,
             this.responseType='json',
@@ -140,7 +140,7 @@ function intercept(){
 
 //userscript entry
 var init=function(){
-        //create button
+    //create button
     if(window.self === window.top){
         debug("init");
         cloudFlareUrl=GM_getValue('cloudFlareUrl')||cloudFlareUrl;
@@ -151,26 +151,34 @@ var init=function(){
             if(navList.length==2){
                 nav=navList[1];
                 debug('nav: '+nav.innerHTML)
-        var nav=document.querySelector('nav');
-        btn =document.createElement('button');
-        btn.innerHTML='Sort by popularity';
-        btn.addEventListener('click',sortByPopularity);
-        nav.insertBefore(btn,null);
-        select=document.createElement('select');
-        select.id='sortByPopularity';
-        var optionObj={
-            'Popular with all':'popular_d',
-            'Popular (male)':'popular_male_d',
-            'Popular (female)':'popular_female_d'
-        }
-        for(var key of Object.keys(optionObj)){
-            var option=document.createElement('option');
-            option.innerHTML=key;
-            option.value=optionObj[key];
-            select.insertBefore(option,null);
-        }
-        nav.insertBefore(select,null);
-        clearInterval(interval);
+                var nav=document.querySelector('nav');
+                btn =document.createElement('button');
+                btn.innerHTML='Sort by popularity';
+                btn.addEventListener('click',sortByPopularity);
+                nav.insertBefore(btn,null);
+                select=document.createElement('select');
+                select.id='sortByPopularity';
+                var optionObj={
+                    'Popular with all':'popular_d',
+                    'Popular (male)':'popular_male_d',
+                    'Popular (female)':'popular_female_d'
+                }
+                for(var key of Object.keys(optionObj)){
+                    var option=document.createElement('option');
+                    option.innerHTML=key;
+                    option.value=optionObj[key];
+                    select.insertBefore(option,null);
+                }
+                nav.insertBefore(select,null);
+                let elm_Message=document.querySelector('button[title="Message"]');
+                if(elm_Message==null){
+                    btn.disabled=true;
+                    let lebal=document.createElement('lebal');
+                    lebal.innerHTML='Login required';
+                    lebal.style.color='red';
+                    nav.insertBefore(lebal,btn);
+                }
+                clearInterval(interval);
 
             }
         },4000);
@@ -224,19 +232,25 @@ function sortByPopularity(e) {
 }
 
 
-function getBookmark(obj, bookmarkNum=1, pageNum=1 ) {
+function getBookmark(obj, totalPageNum=1, pageNum=1 ) {
     if(config.bookmarkSupport){
         let reqObj=new requestObject('','','');
         reqObj.url='https://www.pixiv.net/bookmark.php?rest=show&p='+pageNum;
         reqObj.responseType='text';
         request(reqObj,function (responseDetails,package) {
             let dom = new DOMParser().parseFromString(responseDetails.responseText, "text/html");
-            totalPageNum=dom.querySelector('ul.page-list').childElementCount;
-            debug('totalPageNum: '+totalPageNum);
-            for(let elem of dom.querySelectorAll('li.image-item')){
-                let illustId = elem.querySelector('a').href.match(/(\d{1,20})/)[1];
-                debug('illustId: '+illustId);
-                illustId_list.push(illustId);
+            let count_badge=parseInt(dom.querySelector('span.count-badge').textContent.match(/(\d{1,9})/)[1]);
+            if(count_badge>0){
+                for(let elem of dom.querySelectorAll('li.image-item')){
+                    let illustId = elem.querySelector('a').href.match(/(\d{1,20})/)[1];
+                    debug('illustId: '+illustId);
+                    illustId_list.push(illustId);
+                }
+                let elm_page_list=dom.querySelector('ul.page-list');
+                if(elm_page_list!=null){
+                    totalPageNum=elm_page_list.childElementCount;
+                    debug('totalPageNum: '+totalPageNum);
+                }
             }
             if(pageNum!=totalPageNum){
                 pageNum++;
@@ -263,10 +277,12 @@ function replaceContent(responseDetails, obj) {
     let page =obj.package;
     debug("responseDetails.response: "+JSON.stringify(responseDetails.response));
     let remoteResponse=responseDetails.response;
-    for(let data of remoteResponse.body.illustManga.data){
-        if(illustId_list.includes(data.illustId)){
-            debug('data.illustId: '+data.illustId);
-            data.bookmarkData={"id":"123","private":false};
+    if(illustId_list!=[]){
+        for(let data of remoteResponse.body.illustManga.data){
+            if(illustId_list.includes(data.illustId)){
+                debug('data.illustId: '+data.illustId);
+                data.bookmarkData={"id":"123","private":false};
+            }
         }
     }
     debug("remoteResponse: "+JSON.stringify(remoteResponse));
