@@ -15,7 +15,7 @@
 // @description:kr non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.21
+// @version     1.22
 // @run-at      document-end
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -47,7 +47,7 @@ class requestObject{
         this.method = 'GET';
         this.url = cloudFlareUrl+originUrl
             .replace(/(https:\/\/www\.pixiv\.net\/)(\w*\/)?tags\/([^\/]*)\/(\w*)\?([^\/\?]*)/,
-                function($1,$2,$3,$4,$5){ return $1+'ajax/search/'+$4+'/'+$3+'?'+$5;})
+                function($1,$2,$3,$4,$5,$6){ return $2+'ajax/search/'+$5+'/'+$4+'?'+$6;})
             .replace(/p=\d*/,'').replace(/order=[_\w]*/,'')+'&p='+page+'&order='+order;
         this.data=null,
             this.responseType='json',
