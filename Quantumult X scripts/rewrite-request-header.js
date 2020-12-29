@@ -14,7 +14,11 @@ modifiedHeaders['Key'] = 'whatever';
 
 var modifiedPath = '/api2/abc?k=v';
 
-var modifiedUrl='https://proud-surf-e590.zhuzemin.workers.dev/ajax/' +$request.url;
+var modifiedUrl=null;
+
+if(/https:\/\/www\.pixiv\.net\/ajax\/search\//.test($request.url)){
+    modifiedUrl='https://proud-surf-e590.zhuzemin.workers.dev/ajax/' +$request.url;
+}
 $done({url:modifiedUrl});
 // $done({path : modifiedPath});
 // $done({}); // Not changed.
