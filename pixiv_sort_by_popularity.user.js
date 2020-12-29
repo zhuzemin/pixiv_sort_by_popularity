@@ -44,7 +44,7 @@ let config = {
         'userNum': null,
         //share cookie
         'share': null,
-        'guides': 'https://zhuzemin4.github.io/pixiv_sort_by_popularity',
+        'guides': 'https://zhuzemin.github.io/pixiv_sort_by_popularity',
         'bookmark': 'https://www.pixiv.net/bookmark.php?rest=show&p=',
     },
     'nav': null,
