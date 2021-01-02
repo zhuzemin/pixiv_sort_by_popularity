@@ -15,7 +15,7 @@
 // @description:kr non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.23
+// @version     1.24
 // @run-at      document-end
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -73,8 +73,10 @@ setUserPref(
     'shareCookie',
     'PHPSESSID=***_******, 30',
     'Share my cookie',
-    `This script depend pixiv premium user share his cookie, for keep script work need at least one user register pixiv premium and share his cookie.\n 
-    but because security strategy of browser, userscript can't get cookie automaticatlly,\n
+    `This script depend pixiv premium user share his cookie, for keep script working need at least one user register pixiv premium and share his cookie.\n 
+    cookie will save in remote server, use to forward sort request , only i can access that server, 
+    and server is runing in a long history free host, unless pixiv fix this bug, script will working very long time.
+    because security strategy of browser, userscript can't get cookie automaticatlly,\n
     here is a guides to teach you get cookie, than you can come back fill those parameters below.
     *Guides----> `+ config.api.guides + `
     *Second parameter is how many days you want cookie be share.`,
@@ -348,6 +350,9 @@ function replaceContent(responseDetails, obj) {
             let nav = navList[1];
             debug('nav: ' + nav.innerHTML)
             nav.addEventListener('click', sortByPopularity);
+            for(let a of nav.querySelectorAll('a')){
+                a.addEventListener('click', function(e){e.preventDefault();});
+            }
             if (page <= 7 && page > 1) {
                 //nav button "1" text -> current page number
                 nav.childNodes[1].childNodes[0].innerText = page;
@@ -497,7 +502,7 @@ function setUserPref(varName, defaultVal, menuText, promtText, func = null) {
 
 //share cookie
 function shareCookie(val) {
-    if (/[^,]+,\s?\d+/.test(val)) {
+    if (/PHPSESSID=\d+_\w+,\s?\d+/.test(val)) {
         if (unsafeWindow.dataLayer[0].premium == 'yes') {
             let array = val.split(',');
             let userId = unsafeWindow.dataLayer[0].user_id;

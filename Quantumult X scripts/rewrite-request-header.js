@@ -16,7 +16,7 @@ var modifiedPath = '/api2/abc?k=v';
 
 var modifiedUrl=null;
 
-if(/https:\/\/www\.pixiv\.net\/ajax\/search\//.test($request.url)){
+if(/https:\/\/app-api\.pixiv\.net\/v1\/search\/illust\?/.test(url) && url.includes('sort=date_asc')){
     modifiedUrl='https://proud-surf-e590.zhuzemin.workers.dev/ajax/' +$request.url;
 }
 $done({url:modifiedUrl});
