@@ -15,7 +15,7 @@
 // @description:kr non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.24
+// @version     1.25
 // @run-at      document-end
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -25,8 +25,6 @@
 // @grant         GM_setValue
 // @grant         GM_getValue
 // @connect-src workers.dev
-// @contributionAmount 0.5
-// @contributionURL https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=rzzm@hotmail.com&item_name=Greasy+Fork+donation
 // ==/UserScript==
 
 
@@ -39,23 +37,24 @@ let config = {
     api: {
         'base': 'https://proud-surf-e590.zhuzemin.workers.dev',
         //pixiv search request through this url will use premium user.
-        'ajax': null,
+        'ajax': '/ajax',
         //get premium users number
-        'userNum': null,
+        'userNum': '/userNum',
         //share cookie
-        'share': null,
+        'share': '/share',
         'guides': 'https://zhuzemin.github.io/pixiv_sort_by_popularity',
         'bookmark': 'https://www.pixiv.net/bookmark.php?rest=show&p=',
     },
+    'firstInsert': true,
     'nav': null,
     'btn': null,
     'bookmarkSupport': GM_getValue('bookmarkSupport'), //support bookmark in search result page, but loading will slower.
     'illustId_list': [],
 }
-config.api.ajax = config.api.base + '/ajax';
-config.api.userNum = config.api.base + '/userNum';
-config.api.share = config.api.base + '/share';
-var debug = config.debug ? console.log.bind(console) : function () {
+config.api.ajax = config.api.base + config.api.ajax;
+config.api.userNum = config.api.base + config.api.userNum;
+config.api.share = config.api.base + config.api.share;
+let debug = config.debug ? console.log.bind(console) : function () {
 };
 
 
@@ -117,53 +116,66 @@ class requestObject {
 
 //for override fetch, I think override function sure insert to page, otherwise userscript don't have permission modified fetch in page?
 function addJS_Node(text) {
-    var scriptNode = document.createElement('script');
+    let scriptNode = document.createElement('script');
     scriptNode.type = "text/javascript";
     if (text) scriptNode.textContent = text;
 
-    var targ = document.getElementsByTagName('head')[0] || d.body || d.documentElement;
+    let targ = document.getElementsByTagName('head')[0] || d.body || d.documentElement;
     targ.appendChild(scriptNode);
 }
 
 
 //override fetch
-function intercept() {
-    //insert override function to page
-    addJS_Node(`
-    var newData;
-    var interceptEnable;
-    var newUrl;
-    var constantMock = window.fetch;
-    window.fetch = function() {
-    if(interceptEnable&&/https:\\/\\/www\\.pixiv\\.net\\/ajax\\/search\\//.test(arguments[0])){
-        arguments[0]=newUrl;
-        //console.log(arguments);
+function intercept(newData, newUrl, interceptEnable) {
+    if (config.firstInsert) {
+        //insert override function to page
+        addJS_Node(`
+        let newData = `+ newData + `;
+        let interceptEnable = `+ interceptEnable + `;
+        let newUrl = '`+ newUrl + `';
+        let debug = `+ config.debug + ` ? console.log.bind(console) : function () {
+        };
+        let constantMock = window.fetch;
+        window.fetch = function () {
+            debug('arguments: ' + arguments[0]);
+            debug('newUrl: ' + newUrl);
+            if (interceptEnable && /\\/ajax\\/search\\/artworks/.test(arguments[0])) {
+                arguments[0] = newUrl;
+            }
+            return new Promise((resolve, reject) => {
+                constantMock.apply(this, arguments)
+                    .then((response) => {
+                        if (interceptEnable && /\\/ajax\\/search\\/artworks/.test(response.url)) {
+                            let blob = new Blob([JSON.stringify(newData, null, 2)], { type: 'application/json' });
+                            debug('newData: ' + JSON.stringify(newData));
+        
+                            let newResponse = new Response(
+                                blob, {
+                                status: response.status,
+                                statusText: response.statusText,
+                                headers: response.headers
+                            });
+                            debug('newResponse: ' + JSON.stringify(newResponse));
+                            response = newResponse;
+                            interceptEnable = false;
+                        }
+                        resolve(response);
+                    })
+                    .catch((error) => {
+                        reject(response);
+                    })
+            });
+        }
+             `);
+        config.firstInsert = false;
     }
-    return new Promise((resolve, reject) => {
-        constantMock.apply(this, arguments)
-            .then((response) => {
-    if(interceptEnable&&/https:\\/\\/www\\.pixiv\\.net\\/ajax\\/search\\//.test(response.url)){
-       var blob = new Blob([newData], {type : 'application/json'});
-         //console.log(newData);
- 
-        var newResponse=new Response(
-        blob, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers
-      });
-        //console.log(newResponse);
-                    response=newResponse;
-                    interceptEnable=false;
+    else {
+        addJS_Node(`
+        newData = `+ newData + `;
+        interceptEnable = `+ interceptEnable + `;
+        newUrl = '`+ newUrl + `';
+        `);
     }
-                resolve(response);
-            })
-            .catch((error) => {
-                reject(response);
-            })
-    });
- }
-         `);
     //here is script end,
     //in console ,log show fetch response body has been changed <--- not very sure
     //and page have react ---> stay blank for ever
@@ -178,12 +190,12 @@ function intercept() {
 
 
 //userscript entry
-var init = function () {
+let init = function () {
     //create button
     if (window.self === window.top) {
         debug("init");
-        var interval = setInterval(function () {
-            var navList = document.querySelectorAll('nav');
+        let interval = setInterval(function () {
+            let navList = document.querySelectorAll('nav');
             debug('navList.length: ' + navList.length)
             if (navList.length == 2) {
                 clearInterval(interval);
@@ -195,13 +207,13 @@ var init = function () {
                 config.nav.insertBefore(config.btn, null);
                 let select = document.createElement('select');
                 select.id = 'sortByPopularity';
-                var optionObj = {
+                let optionObj = {
                     'Popular with all': 'popular_d',
                     'Popular (male)': 'popular_male_d',
                     'Popular (female)': 'popular_female_d'
                 }
-                for (var key of Object.keys(optionObj)) {
-                    var option = document.createElement('option');
+                for (let key of Object.keys(optionObj)) {
+                    let option = document.createElement('option');
                     option.innerHTML = key;
                     option.value = optionObj[key];
                     select.insertBefore(option, null);
@@ -228,9 +240,10 @@ window.addEventListener('load', init);
 //get current search word, then use xmlHttpRequest get response(from my server)
 function sortByPopularity(e) {
     config.btn.innerHTML = 'Searching...'
+    config.btn.focus();
     try {
-        var page;
-        //var matching=window.location.href.match(/https:\/\/www\.pixiv\.net\/(\w*\/)?tags\/(.*)\/\w*\?(order=[^\?&]*)?&?(mode=(\w\d*))?&?(p=(\d*))?/);
+        let page;
+        //let matching=window.location.href.match(/https:\/\/www\.pixiv\.net\/(\w*\/)?tags\/(.*)\/\w*\?(order=[^\?&]*)?&?(mode=(\w\d*))?&?(p=(\d*))?/);
         debug(e.target.tagName);
         if (/(\d*)/.test(e.target.textContent) && (e.target.tagName.toLowerCase() == 'span' || e.target.tagName.toLowerCase() == "a")) {
             page = e.target.textContent.match(/(\d*)/)[1];
@@ -255,8 +268,8 @@ function sortByPopularity(e) {
         }
         page = parseInt(page);
         debug('page: ' + page);
-        var order = document.querySelector('#sortByPopularity').value;
-        var obj = new requestObject(window.location.href, page, order);
+        let order = document.querySelector('#sortByPopularity').value;
+        let obj = new requestObject(window.location.href, page, order);
         obj.package = page;
         debug('JSON.stringify(obj): ' + JSON.stringify(obj));
         getBookmark(obj);
@@ -330,12 +343,16 @@ function replaceContent(responseDetails, obj) {
     }
     debug("remoteResponse: " + JSON.stringify(remoteResponse));
     //debug("remoteResponse.body.illustManga.data[0]: "+JSON.stringify(remoteResponse.body.illustManga.data[0]));
-    unsafeWindow.newData = JSON.stringify(remoteResponse, null, 2);
+    /*unsafeWindow.newData = JSON.stringify(remoteResponse, null, 2);
     unsafeWindow.interceptEnable = true;
-    unsafeWindow.newUrl = obj.url.replace(config.api.ajax + 'https://www.pixiv.net', '');
+    unsafeWindow.newUrl = obj.url.replace(config.api.ajax + 'https://www.pixiv.net', '');*/
+    let newData = JSON.stringify(remoteResponse, null, 2);
+    let interceptEnable = true;
+    let newUrl = obj.url.replace(config.api.ajax + '/https://www.pixiv.net', '');
+    intercept(newData, newUrl, interceptEnable);
     //trigger fetch by click "Newest" or "Oldest"
-    var spanList = document.querySelectorAll('span');
-    for (var span of spanList) {
+    let spanList = document.querySelectorAll('span');
+    for (let span of spanList) {
         if (/(Newest)|(Oldest)|(按最新排序)|(按旧|舊排序)|(新しい順)|(古い順)|(최신순)|(과거순)/.test(span.textContent)) {
             if (span.parentElement.tagName.toLowerCase() == 'a') {
                 span.parentElement.click();
@@ -343,15 +360,15 @@ function replaceContent(responseDetails, obj) {
             }
         }
     }
-    var interval = setInterval(function () {
-        var navList = document.querySelectorAll('nav');
+    let interval = setInterval(function () {
+        let navList = document.querySelectorAll('nav');
         debug('navList.length: ' + navList.length)
         if (navList.length == 2) {
             let nav = navList[1];
             debug('nav: ' + nav.innerHTML)
             nav.addEventListener('click', sortByPopularity);
-            for(let a of nav.querySelectorAll('a')){
-                a.addEventListener('click', function(e){e.preventDefault();});
+            for (let a of nav.querySelectorAll('a')) {
+                a.addEventListener('click', function (e) { e.preventDefault(); });
             }
             if (page <= 7 && page > 1) {
                 //nav button "1" text -> current page number
@@ -368,15 +385,15 @@ function replaceContent(responseDetails, obj) {
 
             }
             else if (page > 7) {
-                var currentPositionInNav = page % 7;
+                let currentPositionInNav = page % 7;
                 debug("currentPositionInNav: " + currentPositionInNav);
-                var buttonStartNumber = page - currentPositionInNav;
+                let buttonStartNumber = page - currentPositionInNav;
                 debug("buttonStartNumber: " + buttonStartNumber);
-                var navButtonCount = 1;
+                let navButtonCount = 1;
                 //switch two button positon
                 nav.insertBefore(nav.childNodes[1], nav.childNodes[currentPositionInNav + 1]);
                 nav.insertBefore(nav.childNodes[currentPositionInNav + 1], nav.childNodes[1]);
-                for (var i = buttonStartNumber; i <= (buttonStartNumber + 6); i++) {
+                for (let i = buttonStartNumber; i <= (buttonStartNumber + 6); i++) {
                     debug("navButtonCount: " + navButtonCount);
                     debug("i: " + i);
                     nav.childNodes[navButtonCount].childNodes[0].innerText = i;
@@ -443,35 +460,35 @@ function getPreUserNum() {
             debug('num: ' + num);
             if (num > 0) {
                 config.btn.disabled = false;
-                intercept();
+                //intercept();
             }
             let style = document.createElement('style');
             style.type = 'text/css';
             style.innerHTML = `
-        [data-tooltip]:before {
+        [data - tooltip]: before {
             /* needed - do not touch */
-            content: attr(data-tooltip);
+            content: attr(data - tooltip);
             position: absolute;
             opacity: 0;
-            
+
             /* customizable */
             transition: all 0.15s ease;
             padding: 10px;
             color: #333;
-            border-radius: 5px;
-            box-shadow: 2px 2px 1px silver;    
+            border - radius: 5px;
+            box - shadow: 2px 2px 1px silver;
         }
-        
-        [data-tooltip]:hover:before {
+
+        [data - tooltip]: hover: before {
             /* needed - do not touch */
             opacity: 1;
-            
+
             /* customizable */
             background: white;
-            margin-top: -50px;
-            margin-left: 20px;    
+            margin - top: -50px;
+            margin - left: 20px;
         }
-            `;
+        `;
             document.getElementsByTagName('head')[0].appendChild(style);
             config.btn.setAttribute('data-tooltip', 'Current shared premium user: ' + num);
         }
@@ -486,11 +503,10 @@ function getPreUserNum() {
  * @param {string} menuText
  * @param {string} promtText
  * @param {function} func
- * @param {string} sep
  */
 function setUserPref(varName, defaultVal, menuText, promtText, func = null) {
     GM_registerMenuCommand(menuText, function () {
-        var val = prompt(promtText, GM_getValue(varName, defaultVal));
+        let val = prompt(promtText, GM_getValue(varName, defaultVal));
         if (val === null) { return; }  // end execution if clicked CANCEL
         GM_setValue(varName, val);
         if (func != null) {
