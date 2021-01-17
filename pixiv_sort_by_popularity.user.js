@@ -15,7 +15,7 @@
 // @description:kr non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.25
+// @version     1.26
 // @run-at      document-end
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -45,10 +45,15 @@ let config = {
         'guides': 'https://zhuzemin.github.io/pixiv_sort_by_popularity',
         'bookmark': 'https://www.pixiv.net/bookmark.php?rest=show&p=',
     },
+    'elem': {
+        'nav': null,
+        'btn': null,
+        'div': null,
+        'span': null,
+        'select': null,
+    },
     'firstInsert': true,
-    'nav': null,
-    'btn': null,
-    'bookmarkSupport': GM_getValue('bookmarkSupport'), //support bookmark in search result page, but loading will slower.
+    'bookmarkSupport': GM_getValue('bookmarkSupport') || 0, //support bookmark in search result page, but loading will slower.
     'illustId_list': [],
 }
 config.api.ajax = config.api.base + config.api.ajax;
@@ -61,9 +66,9 @@ let debug = config.debug ? console.log.bind(console) : function () {
 // prepare UserPrefs
 setUserPref(
     'bookmarkSupport',
-    false,
+    config.bookmarkSupport,
     'bookmark support',
-    `support bookmark in search result page, but loading will slower.`,
+    `support bookmark in search result page, but loading will slower. *1|0`,
 );
 
 
@@ -96,9 +101,13 @@ class requestObject {
         this.url = originUrl;
         if (order != null) {
             this.url = config.api.ajax + '/' + originUrl
-                .replace(/(https:\/\/www\.pixiv\.net\/)(\w*\/)?tags\/([^\/]*)\/(\w*)\?([^\/\?]*)/,
-                    function (match, $1, $2, $3, $4, $5, offset, original) { return $1 + 'ajax/search/' + $4 + '/' + $3 + '?' + $5; })
-                .replace(/p=\d*/, '').replace(/order=[_\w]*/, '') + '&p=' + page + '&order=' + order;
+                .replace(/(https:\/\/www.pixiv.net)(\/\w+)?\/tags\/([^\/]+)\/(\w+)([\?&\w=&_]+)?/,
+                    function (match, $1, $2, $3, $4, $5, offset, original) {
+                        //return '${$1}/ajax/search/${$4}/${$3}${$5}';
+                        return $1 + '/ajax/search/' + $4 + '/' + $3 + $5;
+                    })
+                .replace(/p=\d*/, 'p=' + page).replace(/order=[_\w]+/, 'order=' + order);
+            //.replace(/p=\d*/, '').replace(/order=[_\w]*/, '') + '&p=' + page + '&order=' + order;
         }
         else if (page != null) {
             this.url = originUrl + page;
@@ -199,14 +208,12 @@ let init = function () {
             debug('navList.length: ' + navList.length)
             if (navList.length == 2) {
                 clearInterval(interval);
-                config.nav = navList[0];
-                config.btn = document.createElement('button');
-                config.btn.innerHTML = 'Sort by popularity';
-                config.btn.addEventListener('click', sortByPopularity);
-                config.btn.disabled = true;
-                config.nav.insertBefore(config.btn, null);
-                let select = document.createElement('select');
-                select.id = 'sortByPopularity';
+                config.elem.btn = document.createElement('button');
+                config.elem.btn.textContent = 'Sort by popularity';
+                config.elem.btn.addEventListener('click', sortByPopularity);
+                config.elem.btn.disabled = true;
+                config.elem.select = document.createElement('select');
+                //config.elem.select.id = 'sortByPopularity';
                 let optionObj = {
                     'Popular with all': 'popular_d',
                     'Popular (male)': 'popular_male_d',
@@ -216,21 +223,53 @@ let init = function () {
                     let option = document.createElement('option');
                     option.innerHTML = key;
                     option.value = optionObj[key];
-                    select.insertBefore(option, null);
+                    config.elem.select.appendChild(option);
                 }
-                config.nav.insertBefore(select, null);
-                if (config.bookmarkSupport) {
+                config.elem.span = document.createElement('span');
+                config.elem.span.className = 'tooltiptext';
+                config.elem.div = document.createElement('div');
+                config.elem.div.className = 'tooltip';
+                config.elem.nav = navList[0];
+                config.elem.div.appendChild(config.elem.btn);
+                config.elem.div.appendChild(config.elem.select);
+                config.elem.div.appendChild(config.elem.span);
+                config.elem.nav.appendChild(config.elem.div);
+                if (config.bookmarkSupport = 1) {
                     if (unsafeWindow.dataLayer[0].login != 'yes') {
-                        let lebal = document.createElement('lebal');
-                        lebal.innerHTML = 'bookmark support need login';
-                        lebal.style.color = 'red';
-                        config.nav.insertBefore(lebal, config.btn);
+                        config.elem.span.textContent = 'bookmark support need login';
                         return;
                     }
                 }
                 getPreUserNum();
             }
-        }, 4000);
+        }, 1000);
+        let style = document.createElement('style');
+        style.textContent = `
+        .tooltip {
+          position: relative;
+          display: inline-block;
+        }
+        
+        .tooltip .tooltiptext {
+          visibility: hidden;
+          width: 500px;
+          background-color: white;
+          color: black;
+          text-align: center;
+          border-radius: 3px;
+          padding: 5px 0;
+        
+          /* Position the tooltip */
+          position: absolute;
+          z-index: 1;
+        }
+        
+        .tooltip:hover .tooltiptext {
+          visibility: visible;
+        }
+        `;
+        document.querySelector('head').appendChild(style);
+
     }
 
 }
@@ -239,8 +278,9 @@ window.addEventListener('load', init);
 
 //get current search word, then use xmlHttpRequest get response(from my server)
 function sortByPopularity(e) {
-    config.btn.innerHTML = 'Searching...'
-    config.btn.focus();
+    config.elem.btn.focus();
+    config.elem.btn.textContent = 'Searching...'
+    config.elem.btn.disabled = true;
     try {
         let page;
         //let matching=window.location.href.match(/https:\/\/www\.pixiv\.net\/(\w*\/)?tags\/(.*)\/\w*\?(order=[^\?&]*)?&?(mode=(\w\d*))?&?(p=(\d*))?/);
@@ -249,7 +289,7 @@ function sortByPopularity(e) {
             page = e.target.textContent.match(/(\d*)/)[1];
         }
         else if (e.target.tagName.toLowerCase() == 'svg' || e.target.tagName.toLowerCase() == 'polyline') {
-            //debug('e.target.parentElement.tagName: '+e.target.parentElement.tagName);
+            debug('e.target.parentElement.tagName: ' + e.target.parentElement.tagName);
             if (e.target.parentElement.tagName.toLowerCase() == 'a') {
                 page = e.target.parentElement.href.match(/p=(\d*)/)[1];
 
@@ -268,7 +308,8 @@ function sortByPopularity(e) {
         }
         page = parseInt(page);
         debug('page: ' + page);
-        let order = document.querySelector('#sortByPopularity').value;
+        //let order = document.querySelector('#sortByPopularity').value;
+        let order = config.elem.select.value;
         let obj = new requestObject(window.location.href, page, order);
         obj.package = page;
         debug('JSON.stringify(obj): ' + JSON.stringify(obj));
@@ -283,7 +324,7 @@ function sortByPopularity(e) {
 
 
 function getBookmark(obj, totalPage = 1, page = 1) {
-    if (config.bookmarkSupport) {
+    if (config.bookmarkSupport == 1) {
         let reqObj = new requestObject(config.api.bookmark, page);
         reqObj.respType = 'text';
         request(reqObj, function (responseDetails, package) {
@@ -342,10 +383,6 @@ function replaceContent(responseDetails, obj) {
         }
     }
     debug("remoteResponse: " + JSON.stringify(remoteResponse));
-    //debug("remoteResponse.body.illustManga.data[0]: "+JSON.stringify(remoteResponse.body.illustManga.data[0]));
-    /*unsafeWindow.newData = JSON.stringify(remoteResponse, null, 2);
-    unsafeWindow.interceptEnable = true;
-    unsafeWindow.newUrl = obj.url.replace(config.api.ajax + 'https://www.pixiv.net', '');*/
     let newData = JSON.stringify(remoteResponse, null, 2);
     let interceptEnable = true;
     let newUrl = obj.url.replace(config.api.ajax + '/https://www.pixiv.net', '');
@@ -410,11 +447,11 @@ function replaceContent(responseDetails, obj) {
                 nav.childNodes[8].href = nav.childNodes[8].href.replace(/p=\d*/, 'p=' + (page + 1));
 
             }
-            config.btn.innerHTML = 'Sort by popularity';
+            config.elem.btn.textContent = 'Sort by popularity';
             clearInterval(interval);
 
         }
-    }, 4000);
+    }, 1000);
 }
 
 
@@ -459,38 +496,9 @@ function getPreUserNum() {
             let num = json.data.userNum;
             debug('num: ' + num);
             if (num > 0) {
-                config.btn.disabled = false;
-                //intercept();
+                config.elem.btn.disabled = false;
             }
-            let style = document.createElement('style');
-            style.type = 'text/css';
-            style.innerHTML = `
-        [data - tooltip]: before {
-            /* needed - do not touch */
-            content: attr(data - tooltip);
-            position: absolute;
-            opacity: 0;
-
-            /* customizable */
-            transition: all 0.15s ease;
-            padding: 10px;
-            color: #333;
-            border - radius: 5px;
-            box - shadow: 2px 2px 1px silver;
-        }
-
-        [data - tooltip]: hover: before {
-            /* needed - do not touch */
-            opacity: 1;
-
-            /* customizable */
-            background: white;
-            margin - top: -50px;
-            margin - left: 20px;
-        }
-        `;
-            document.getElementsByTagName('head')[0].appendChild(style);
-            config.btn.setAttribute('data-tooltip', 'Current shared premium user: ' + num);
+            config.elem.span.textContent = 'Current shared premium user: ' + num;
         }
     });
 }
