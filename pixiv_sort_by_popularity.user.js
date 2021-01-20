@@ -15,7 +15,7 @@
 // @description:kr non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.26
+// @version     1.27
 // @run-at      document-end
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -68,7 +68,7 @@ setUserPref(
     'bookmarkSupport',
     config.bookmarkSupport,
     'bookmark support',
-    `support bookmark in search result page, but loading will slower. *1|0`,
+    `support bookmark in search result page, but loading will slower. 1|0`,
 );
 
 
@@ -106,8 +106,8 @@ class requestObject {
                         //return '${$1}/ajax/search/${$4}/${$3}${$5}';
                         return $1 + '/ajax/search/' + $4 + '/' + $3 + $5;
                     })
-                .replace(/p=\d*/, 'p=' + page).replace(/order=[_\w]+/, 'order=' + order);
-            //.replace(/p=\d*/, '').replace(/order=[_\w]*/, '') + '&p=' + page + '&order=' + order;
+                //.replace(/p=\d*/, 'p=' + page).replace(/order=[_\w]+/, 'order=' + order);
+                .replace(/p=\d+/, '').replace(/order=[_\w]+/, '') + '&p=' + page + '&order=' + order;
         }
         else if (page != null) {
             this.url = originUrl + page;
@@ -234,7 +234,7 @@ let init = function () {
                 config.elem.div.appendChild(config.elem.select);
                 config.elem.div.appendChild(config.elem.span);
                 config.elem.nav.appendChild(config.elem.div);
-                if (config.bookmarkSupport = 1) {
+                if (config.bookmarkSupport == 1) {
                     if (unsafeWindow.dataLayer[0].login != 'yes') {
                         config.elem.span.textContent = 'bookmark support need login';
                         return;
@@ -273,7 +273,7 @@ let init = function () {
     }
 
 }
-window.addEventListener('load', init);
+window.addEventListener('DOMContentLoaded', init);
 
 
 //get current search word, then use xmlHttpRequest get response(from my server)
@@ -310,6 +310,7 @@ function sortByPopularity(e) {
         debug('page: ' + page);
         //let order = document.querySelector('#sortByPopularity').value;
         let order = config.elem.select.value;
+        debug('order: ' + order);
         let obj = new requestObject(window.location.href, page, order);
         obj.package = page;
         debug('JSON.stringify(obj): ' + JSON.stringify(obj));
@@ -324,6 +325,7 @@ function sortByPopularity(e) {
 
 
 function getBookmark(obj, totalPage = 1, page = 1) {
+    debug('config.bookmarkSupport: ' + config.bookmarkSupport);
     if (config.bookmarkSupport == 1) {
         let reqObj = new requestObject(config.api.bookmark, page);
         reqObj.respType = 'text';
