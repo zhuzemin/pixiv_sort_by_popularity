@@ -15,7 +15,7 @@
 // @description:kr non premium menber use "Sort by popularity"
 // @include     https://www.pixiv.net/*/tags/*
 // @include     https://www.pixiv.net/tags/*
-// @version     1.27
+// @version     1.28
 // @run-at      document-end
 // @author      zhuzemin
 // @license     Mozilla Public License 2.0; http://www.mozilla.org/MPL/2.0/
@@ -450,6 +450,7 @@ function replaceContent(responseDetails, obj) {
 
             }
             config.elem.btn.textContent = 'Sort by popularity';
+            config.elem.btn.disabled = false;
             clearInterval(interval);
 
         }
